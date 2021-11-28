@@ -1,3 +1,4 @@
+import numpy as np
 import torch.nn
 import torchvision.transforms as T
 from torchvision.io import read_image
@@ -10,7 +11,22 @@ class PetfinderDataset(Dataset):
         self._y = None
         self.augment = augment
         if "Pawpularity" in df.keys():
-            self._y = df["Pawpularity"].values
+            self._y = torch.tensor(df["Pawpularity"].values, dtype=torch.float32)
+
+        # handeling metadata
+        b = df["Subject Focus"].values.reshape(-1, 1)
+        c = df["Eyes"].values.reshape(-1, 1)
+        d = df["Face"].values.reshape(-1, 1)
+        e = df["Near"].values.reshape(-1, 1)
+        f = df["Action"].values.reshape(-1, 1)
+        g = df["Accessory"].values.reshape(-1, 1)
+        h = df["Group"].values.reshape(-1, 1)
+        i = df["Collage"].values.reshape(-1, 1)
+        j = df["Human"].values.reshape(-1, 1)
+        k = df["Occlusion"].values.reshape(-1, 1)
+        l = df["Info"].values.reshape(-1, 1)
+        m = df["Blur"].values.reshape(-1, 1)
+        self.meta = torch.tensor(np.hstack((b, c, d, e, f, g, h, i, j, k, l, m)), dtype=torch.float32)
         if not self.augment:
             self._transform = torch.nn.Sequential(
                 T.ConvertImageDtype(torch.float32),
@@ -25,7 +41,8 @@ class PetfinderDataset(Dataset):
         image_path = self._X[idx]
         image = read_image(image_path)
         image = self._transform(image)
+        meta = self.meta[idx]
         if self._y is not None:
             label = self._y[idx]
-            return image, label
-        return image
+            return image, meta, label
+        return image, meta

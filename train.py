@@ -25,7 +25,7 @@ dataset_path = "/mnt/data1/yl241/datasets/Pawpularity/"
 network_weight_path = "./weight/"
 model_name = None
 version = None
-num_workers_train = 32
+num_workers_train = 32  # FIXME
 batch_size = 32
 n_splits = 5
 
@@ -94,18 +94,18 @@ def train(net, tb, load_weights=False, pre_trained_params_path=None):
         train_iter, dev_iter = iter(train_loader), iter(dev_loader)
         # TRAIN
         for _ in tqdm(range(train_num_mini_batches)):
-            input_, label = train_iter.next()
-            input_, label = input_.to(CUDA_DEVICE), label.to(CUDA_DEVICE).type(torch.float32)
-            output = net(input_)  # [m, c, h, w]
+            input_, meta, label = train_iter.next()
+            input_, meta, label = input_.to(CUDA_DEVICE), meta.to(CUDA_DEVICE), label.to(CUDA_DEVICE)
+            output = net(input_, meta)  # [m, c, h, w]
             train_loss = compute_loss(output, label)
             train_loss.backward()
             optimizer.step()
             running_train_loss += train_loss.item()
         with torch.no_grad():
             for _ in range(dev_num_mini_batches):
-                input_, label = dev_iter.next()
-                input_, label = input_.to(CUDA_DEVICE), label.to(CUDA_DEVICE)
-                output = net(input_)
+                input_, meta, label = dev_iter.next()
+                input_, meta, label = input_.to(CUDA_DEVICE), meta.to(CUDA_DEVICE), label.to(CUDA_DEVICE)
+                output = net(input_, meta)
                 dev_loss = compute_loss(output, label)
                 running_dev_loss += dev_loss.item()
         scheduler.step()
@@ -143,7 +143,7 @@ def main():
     global model_name, version
     torch.multiprocessing.set_sharing_strategy('file_system')
     model_name = "CNN"
-    version = "-v0.0.5"
+    version = "-v0.2.1"
     param_to_load = None
     tb = SummaryWriter('./runs/' + model_name + version)
 
