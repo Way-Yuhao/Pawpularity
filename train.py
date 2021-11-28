@@ -16,6 +16,8 @@ from sklearn.model_selection import StratifiedKFold
 
 from data_loader import PetfinderDataset
 from model import PetFinderModel
+import torch.multiprocessing
+import copy
 
 """Global Parameters"""
 CUDA_DEVICE = "cuda:6"
@@ -23,14 +25,14 @@ dataset_path = "/mnt/data1/yl241/datasets/Pawpularity/"
 network_weight_path = "./weight/"
 model_name = None
 version = None
-num_workers_train = 8
-batch_size = 8
+num_workers_train = 32
+batch_size = 32
 n_splits = 5
 
 
 """Hyper Parameters"""
-init_lr = 5e-1
-epoch = 2000
+init_lr = 1e-4
+epoch = 100
 
 
 def print_params():
@@ -58,11 +60,12 @@ def save_network_weights(net, ep=None):
 
 def compute_loss(output, target):
     mse_criterion = nn.MSELoss()
-    mse_loss = mse_criterion(output, target)
+    mse_loss = mse_criterion(output.squeeze(1), target)
     return mse_loss
 
 
 def train(net, tb, load_weights=False, pre_trained_params_path=None):
+    print_params()
     net.to(CUDA_DEVICE)
     net.train()
 
@@ -83,6 +86,7 @@ def train(net, tb, load_weights=False, pre_trained_params_path=None):
 
     optimizer = optim.Adam(net.parameters(), lr=init_lr)
     # scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[500, 1000, 1500], gamma=.8)
+    scheduler = optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=1000, gamma=.96)
 
     running_train_loss, running_dev_loss = 0.0, 0.0  # per epoch
     for ep in range(epoch):
@@ -104,7 +108,7 @@ def train(net, tb, load_weights=False, pre_trained_params_path=None):
                 output = net(input_)
                 dev_loss = compute_loss(output, label)
                 running_dev_loss += dev_loss.item()
-
+        scheduler.step()
         # record loss values after each epoch
         cur_train_loss = running_train_loss / train_num_mini_batches
         cur_dev_loss = running_dev_loss / dev_num_mini_batches
@@ -112,33 +116,34 @@ def train(net, tb, load_weights=False, pre_trained_params_path=None):
         tb.add_scalar('loss/train', cur_train_loss, ep)
         tb.add_scalar('loss/dev', cur_dev_loss, ep)
 
-        if ep % 10 == 0:
-            pass  # TODO
+        if ep % 5 == 0:
+            save_network_weights(net, ep="{}".format(ep))
 
         running_train_loss, running_dev_loss = 0.0, 0.0
-        # scheduler.step()
 
-        print("finished training")
-        save_network_weights(net, ep="{}_FINAL".format(epoch))
+    print("finished training")
+    save_network_weights(net, ep="{}_FINAL".format(epoch))
 
 
 def train_k_fold_valid(net, df):
-    skf = StratifiedKFold(n_splits=n_splits, shuffle=True)
-    optimizer = optim.Adam(net.parameters(), lr=init_lr)
-    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[500, 1000, 1500], gamma=.8)
-    for fold, (train_idx, val_idx) in enumerate(skf.split(df["Id"], df["Pawpularity"])):
-        train_df = df.loc[train_idx].reset_index(drop=True)
-        val_df = df.loc[val_idx].reset_index(drop=True)
-        train_loader = load_data(train_df)
-        val_loader = load_data(val_df)
-
-        num_mini_batches = len(train_loader)
+    # skf = StratifiedKFold(n_splits=n_splits, shuffle=True)
+    # optimizer = optim.Adam(net.parameters(), lr=init_lr)
+    # scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[500, 1000, 1500], gamma=.8)
+    # for fold, (train_idx, val_idx) in enumerate(skf.split(df["Id"], df["Pawpularity"])):
+    #     train_df = df.loc[train_idx].reset_index(drop=True)
+    #     val_df = df.loc[val_idx].reset_index(drop=True)
+    #     train_loader = load_data(train_df)
+    #     val_loader = load_data(val_df)
+    #
+    #     num_mini_batches = len(train_loader)
+    raise NotImplementedError
 
 
 def main():
     global model_name, version
+    torch.multiprocessing.set_sharing_strategy('file_system')
     model_name = "CNN"
-    version = "-v0.0.0"
+    version = "-v0.0.5"
     param_to_load = None
     tb = SummaryWriter('./runs/' + model_name + version)
 
