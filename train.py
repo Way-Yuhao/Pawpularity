@@ -55,7 +55,9 @@ def save_network_weights(net, ep=None):
 
 
 def compute_loss(output, target):
-    raise NotImplementedError
+    mse_criterion = nn.MSELoss()
+    mse_loss = mse_criterion(output, target)
+    return mse_loss
 
 
 def train(net, tb, load_weights=False, pre_trained_params_path=None):
@@ -86,7 +88,7 @@ def train(net, tb, load_weights=False, pre_trained_params_path=None):
         for _ in tqdm(range(train_num_mini_batches)):
             input_, label = train_iter.next()
             input_, label = input_.to(CUDA_DEVICE), label.to(CUDA_DEVICE)
-            output = net(input_)
+            output = net(input_)  # [m, c, h, w]
             train_loss = compute_loss(output, label)
             train_loss.backward()
             optimizer.step()
@@ -138,8 +140,8 @@ def main():
 
     net = None  # TODO
     train(net, tb, load_weights=False, pre_trained_params_path=param_to_load)
-
     tb.close()
+
 
 if __name__ == "__main__":
     main()
