@@ -16,9 +16,7 @@ class PetfinderDataset(Dataset):
                 T.ConvertImageDtype(torch.float32),
                 T.Resize([image_size, image_size]),
                 T.transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
-            )
-        # self._transform = T.Resize([image_size, image_size])
+                                       std=[0.229, 0.224, 0.225]))
 
     def __len__(self):
         return len(self._X)

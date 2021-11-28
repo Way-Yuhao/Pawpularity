@@ -8,16 +8,24 @@ class PetFinderModel(nn.Module):
     def __init__(self):
         super(PetFinderModel, self).__init__()
         self.eff_net = EfficientNet.from_pretrained('efficientnet-b1')  # [m, 1000] for b1
-        self.bn1 = nn.BatchNorm2d(num_features=1000)
-        self.dense_net1 = torch.hub.load('pytorch/vision:v0.10.0', 'densenet121', pretrained=True)
-        # TODO concatenate with feature
+        self.bn1 = nn.BatchNorm1d(num_features=1000)
+        self.fc1 = nn.Linear(in_features=1000, out_features=64)
+        self.rl1 = nn.ReLU()
+        self.fc2 = nn.Linear(in_features=64, out_features=64)
+        self.rl2 = nn.ReLU()
+        self.drop_out = nn.Dropout(p=0.3)
+        self.fc3 = nn.Linear(in_features=64, out_features=1)
 
     def forward(self, x):
         e = self.eff_net(x)  # [1, 1000] for b1
         e_normed = self.bn1(e)
-
-        return x
-
+        f1 = self.fc1(e_normed)
+        f1_r = self.rl1(f1)
+        f2 = self.fc2(f1_r)
+        f2_r = self.rl2(f2)
+        f2_o = self.drop_out(f2_r)
+        out = self.fc3(f2_o)
+        return out
 
         # self.flatten = nn.Flatten()
         # self.linear_relu_stack = nn.Sequential(
@@ -43,5 +51,3 @@ class PetFinderModel(nn.Module):
         # out = tfl.Dense(1)(X)
         #
         # model = keras.Model(inputs=[img_input, meta_input], outputs=out)
-
-        return model

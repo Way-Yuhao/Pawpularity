@@ -16,6 +16,7 @@ from sklearn.model_selection import StratifiedKFold
 
 from data_loader import PetfinderDataset
 from model import PetFinderModel
+
 """Global Parameters"""
 CUDA_DEVICE = "cuda:6"
 dataset_path = "/mnt/data1/yl241/datasets/Pawpularity/"
@@ -39,7 +40,7 @@ def print_params():
 
 
 def load_data(df):
-    data_loader = torch.utils.data.DataLoader(PetfinderDataset(df))
+    data_loader = torch.utils.data.DataLoader(PetfinderDataset(df), batch_size=batch_size, num_workers=num_workers_train)
     return data_loader
 
 
