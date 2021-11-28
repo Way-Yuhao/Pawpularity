@@ -30,12 +30,16 @@ epoch = 2000
 
 def load_data(df):
     data_loader = torch.utils.data.DataLoader(PetfinderDataset(df))
+    return data_loader
 
 
 def main():
     df = pd.read_csv(p.join(dataset_path, "train.csv"))
     df["Id"] = df["Id"].apply(lambda x: os.path.join(dataset_path, "train", x + ".jpg"))
-
+    data_loader = load_data(df)
+    images, labels = iter(data_loader).next()
+    print(images)
+    print(labels)
 
 
 if __name__ == "__main__":
