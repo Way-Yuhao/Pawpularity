@@ -40,7 +40,8 @@ def print_params():
 
 
 def load_data(df):
-    data_loader = torch.utils.data.DataLoader(PetfinderDataset(df), batch_size=batch_size, num_workers=num_workers_train)
+    data_loader = torch.utils.data.DataLoader(PetfinderDataset(df), batch_size=batch_size,
+                                              num_workers=num_workers_train, drop_last=True)
     return data_loader
 
 
