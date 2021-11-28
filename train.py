@@ -15,7 +15,7 @@ import pandas as pd
 from sklearn.model_selection import StratifiedKFold
 
 from data_loader import PetfinderDataset
-
+from model import PetFinderModel
 """Global Parameters"""
 CUDA_DEVICE = "cuda:6"
 dataset_path = "/mnt/data1/yl241/datasets/Pawpularity/"
@@ -69,7 +69,9 @@ def train(net, tb, load_weights=False, pre_trained_params_path=None):
     df = pd.read_csv(p.join(dataset_path, "train.csv"))
     df["Id"] = df["Id"].apply(lambda x: os.path.join(dataset_path, "train", x + ".jpg"))
     skf = StratifiedKFold(n_splits=n_splits, shuffle=True)  # FIXME
-    train_idx, val_idx = enumerate(skf.split(df["Id"], df["Pawpularity"]))
+    # fold, (train_idx, val_idx) = enumerate(skf.split(df["Id"], df["Pawpularity"]))
+    enum = enumerate(skf.split(df["Id"], df["Pawpularity"]))
+    fold, (train_idx, val_idx) = list(enum)[0]
     train_df = df.loc[train_idx].reset_index(drop=True)
     val_df = df.loc[val_idx].reset_index(drop=True)
     train_loader = load_data(train_df)
@@ -87,7 +89,7 @@ def train(net, tb, load_weights=False, pre_trained_params_path=None):
         # TRAIN
         for _ in tqdm(range(train_num_mini_batches)):
             input_, label = train_iter.next()
-            input_, label = input_.to(CUDA_DEVICE), label.to(CUDA_DEVICE)
+            input_, label = input_.to(CUDA_DEVICE), label.to(CUDA_DEVICE).type(torch.float32)
             output = net(input_)  # [m, c, h, w]
             train_loss = compute_loss(output, label)
             train_loss.backward()
@@ -138,7 +140,7 @@ def main():
     param_to_load = None
     tb = SummaryWriter('./runs/' + model_name + version)
 
-    net = None  # TODO
+    net = PetFinderModel()  # TODO
     train(net, tb, load_weights=False, pre_trained_params_path=param_to_load)
     tb.close()
 
