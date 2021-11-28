@@ -8,6 +8,7 @@ class EfficientNetModel(nn.Module):
     def __init__(self):
         model = EfficientNet.from_name('efficientnet-b1')
         super(model, self).__init__()
+
         self.flatten = nn.Flatten()
         self.linear_relu_stack = nn.Sequential(
             nn.Linear(28 * 28, 512),
