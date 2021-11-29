@@ -5,7 +5,7 @@ from torchvision.io import read_image
 from torch.utils.data import DataLoader, Dataset
 
 
-class PetfinderDataset(Dataset):
+class PetFinderDataset(Dataset):
     def __init__(self, df, image_size=224, augment=False):
         self._X = df["Id"].values
         self._y = None

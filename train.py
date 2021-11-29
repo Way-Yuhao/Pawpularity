@@ -14,7 +14,7 @@ from matplotlib import pyplot as plt
 import pandas as pd
 from sklearn.model_selection import StratifiedKFold
 
-from data_loader import PetfinderDataset
+from data_loader import PetFinderDataset
 from model import PetFinderModel
 import torch.multiprocessing
 import copy
@@ -42,7 +42,7 @@ def print_params():
 
 
 def load_data(df):
-    data_loader = torch.utils.data.DataLoader(PetfinderDataset(df), batch_size=batch_size,
+    data_loader = torch.utils.data.DataLoader(PetFinderDataset(df), batch_size=batch_size,
                                               num_workers=num_workers_train, drop_last=True)
     return data_loader
 
