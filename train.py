@@ -25,14 +25,14 @@ dataset_path = "/mnt/data1/yl241/datasets/Pawpularity/"
 network_weight_path = "./weight/"
 model_name = None
 version = None
-num_workers_train = 32  # FIXME
-batch_size = 32
-n_splits = 5
+num_workers_train = 1  # FIXME
+batch_size = 4
+n_splits = 2   # FIXME
 
 
 """Hyper Parameters"""
 init_lr = 1e-4
-epoch = 100
+epoch = 500
 
 
 def print_params():
@@ -47,8 +47,9 @@ def load_data(df):
     return data_loader
 
 
-def load_network_weights(net, pre_trained_params_path):
-    raise NotImplementedError
+def load_network_weights(net, path):
+    print("loading pre-trained weights from {}".format(path))
+    net.load_state_dict(torch.load(path))
 
 
 def save_network_weights(net, ep=None):
@@ -71,7 +72,7 @@ def train(net, tb, load_weights=False, pre_trained_params_path=None):
 
     if load_weights:
         load_network_weights(net, pre_trained_params_path)
-    df = pd.read_csv(p.join(dataset_path, "train.csv"))
+    df = pd.read_csv(p.join(dataset_path, "train_20.csv"))
     df["Id"] = df["Id"].apply(lambda x: os.path.join(dataset_path, "train", x + ".jpg"))
     skf = StratifiedKFold(n_splits=n_splits, shuffle=True)  # FIXME
     # fold, (train_idx, val_idx) = enumerate(skf.split(df["Id"], df["Pawpularity"]))
@@ -89,24 +90,26 @@ def train(net, tb, load_weights=False, pre_trained_params_path=None):
     scheduler = optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=1000, gamma=.96)
 
     running_train_loss, running_dev_loss = 0.0, 0.0  # per epoch
+    train_output, dev_output = None, None
+    train_input, dev_input = None, None
     for ep in range(epoch):
         print("Epoch", ep)
         train_iter, dev_iter = iter(train_loader), iter(dev_loader)
         # TRAIN
         for _ in tqdm(range(train_num_mini_batches)):
-            input_, meta, label = train_iter.next()
-            input_, meta, label = input_.to(CUDA_DEVICE), meta.to(CUDA_DEVICE), label.to(CUDA_DEVICE)
-            output = net(input_, meta)  # [m, c, h, w]
-            train_loss = compute_loss(output, label)
+            train_input, meta, label = train_iter.next()
+            train_input, meta, label = train_input.to(CUDA_DEVICE), meta.to(CUDA_DEVICE), label.to(CUDA_DEVICE)
+            train_output = net(train_input, meta)  # [m, c, h, w]
+            train_loss = compute_loss(train_output, label)
             train_loss.backward()
             optimizer.step()
             running_train_loss += train_loss.item()
         with torch.no_grad():
             for _ in range(dev_num_mini_batches):
-                input_, meta, label = dev_iter.next()
-                input_, meta, label = input_.to(CUDA_DEVICE), meta.to(CUDA_DEVICE), label.to(CUDA_DEVICE)
-                output = net(input_, meta)
-                dev_loss = compute_loss(output, label)
+                dev_input, meta, label = dev_iter.next()
+                dev_input, meta, label = dev_input.to(CUDA_DEVICE), meta.to(CUDA_DEVICE), label.to(CUDA_DEVICE)
+                dev_output = net(dev_input, meta)
+                dev_loss = compute_loss(dev_output, label)
                 running_dev_loss += dev_loss.item()
         scheduler.step()
         # record loss values after each epoch
@@ -116,8 +119,11 @@ def train(net, tb, load_weights=False, pre_trained_params_path=None):
         tb.add_scalar('loss/train', cur_train_loss, ep)
         tb.add_scalar('loss/dev', cur_dev_loss, ep)
 
-        if ep % 5 == 0:
-            save_network_weights(net, ep="{}".format(ep))
+        if ep % 10 == 9:
+            # save_network_weights(net, ep="{}".format(ep))  # FIXME
+            # input_img_grid = torchvision.utils.make_grid(train_input)
+            # tb.add_image("{}/inputs".format("train"), input_img_grid, global_step=ep)
+            pass
 
         running_train_loss, running_dev_loss = 0.0, 0.0
 
@@ -143,8 +149,8 @@ def main():
     global model_name, version
     torch.multiprocessing.set_sharing_strategy('file_system')
     model_name = "CNN"
-    version = "-v0.2.1"
-    param_to_load = None
+    version = "-v0.3.9-tiny"
+    param_to_load = "./weight/CNN{}_epoch_{}.pth".format(version, "100_FINAL")
     tb = SummaryWriter('./runs/' + model_name + version)
 
     net = PetFinderModel()  # TODO
