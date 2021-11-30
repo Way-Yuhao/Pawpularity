@@ -2,6 +2,8 @@ import torch
 import torchvision.models.efficientnet as effNet
 from efficientnet_pytorch import EfficientNet
 import torch.nn as nn
+import tez
+import timm
 
 
 class PetFinderModel(nn.Module):
@@ -29,3 +31,21 @@ class PetFinderModel(nn.Module):
         f2_o = self.drop_out(f2_r)
         out = self.fc3(f2_o)
         return out
+
+
+class SwinModel(tez.Model):
+    def __init__(self, model_name):
+        super().__init__()
+        self.model = timm.create_model(model_name, pretrained=True, in_chans=3)
+        self.model.head = torch.nn.Linear(self.model.head.in_features, 128)
+        self.dropout = torch.nn.Dropout(0.1)
+        self.dense1 = torch.nn.Linear(140, 64)
+        self.dense2 = torch.nn.Linear(64, 1)
+
+    def forward(self, image, features, targets=None):
+        x = self.model(image)
+        x = self.dropout(x)
+        x = torch.cat([x, features], dim=1)
+        x = self.dense1(x)
+        x = self.dense2(x)
+        return x, 0, {}

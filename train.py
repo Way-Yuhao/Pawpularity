@@ -3,6 +3,7 @@ import io
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import sys
 import torch.nn.functional as F
 import torchvision.utils
 from torch.utils.tensorboard import SummaryWriter
@@ -15,9 +16,8 @@ import pandas as pd
 from sklearn.model_selection import StratifiedKFold
 
 from data_loader import PetFinderDataset
-from model import PetFinderModel
+from model import PetFinderModel, SwinModel
 import torch.multiprocessing
-import copy
 
 """Global Parameters"""
 CUDA_DEVICE = "cuda:6"
@@ -25,9 +25,9 @@ dataset_path = "/mnt/data1/yl241/datasets/Pawpularity/"
 network_weight_path = "./weight/"
 model_name = None
 version = None
-num_workers_train = 1  # FIXME
+num_workers_train = 4  # FIXME
 batch_size = 4
-n_splits = 2   # FIXME
+n_splits = 5   # FIXME
 
 
 """Hyper Parameters"""
@@ -72,7 +72,7 @@ def train(net, tb, load_weights=False, pre_trained_params_path=None):
 
     if load_weights:
         load_network_weights(net, pre_trained_params_path)
-    df = pd.read_csv(p.join(dataset_path, "train_20.csv"))
+    df = pd.read_csv(p.join(dataset_path, "train.csv"))
     df["Id"] = df["Id"].apply(lambda x: os.path.join(dataset_path, "train", x + ".jpg"))
     skf = StratifiedKFold(n_splits=n_splits, shuffle=True)  # FIXME
     # fold, (train_idx, val_idx) = enumerate(skf.split(df["Id"], df["Pawpularity"]))
@@ -97,9 +97,10 @@ def train(net, tb, load_weights=False, pre_trained_params_path=None):
         train_iter, dev_iter = iter(train_loader), iter(dev_loader)
         # TRAIN
         for _ in tqdm(range(train_num_mini_batches)):
+            net.train()
             train_input, meta, label = train_iter.next()
             train_input, meta, label = train_input.to(CUDA_DEVICE), meta.to(CUDA_DEVICE), label.to(CUDA_DEVICE)
-            train_output = net(train_input, meta)  # [m, c, h, w]
+            train_output, _, _ = net(train_input, meta)  # [m, c, h, w]
             train_loss = compute_loss(train_output, label)
             train_loss.backward()
             optimizer.step()
@@ -108,7 +109,7 @@ def train(net, tb, load_weights=False, pre_trained_params_path=None):
             for _ in range(dev_num_mini_batches):
                 dev_input, meta, label = dev_iter.next()
                 dev_input, meta, label = dev_input.to(CUDA_DEVICE), meta.to(CUDA_DEVICE), label.to(CUDA_DEVICE)
-                dev_output = net(dev_input, meta)
+                dev_output, _, _ = net(dev_input, meta)
                 dev_loss = compute_loss(dev_output, label)
                 running_dev_loss += dev_loss.item()
         scheduler.step()
@@ -147,13 +148,16 @@ def train_k_fold_valid(net, df):
 
 def main():
     global model_name, version
-    torch.multiprocessing.set_sharing_strategy('file_system')
-    model_name = "CNN"
-    version = "-v0.3.9-tiny"
+    sys.path.append('../input/timm-pytorch-image-models/pytorch-image-models-master')
+    sys.path.append('../input/tez-lib')
+    model_name = "Swin"
+    version = "-v1.0.4"
     param_to_load = "./weight/CNN{}_epoch_{}.pth".format(version, "100_FINAL")
     tb = SummaryWriter('./runs/' + model_name + version)
 
-    net = PetFinderModel()  # TODO
+    # net = PetFinderModel()  # TODO
+    net = SwinModel(model_name="swin_large_patch4_window12_384")
+    # net.load(f"../input/paw-models/model_f0.bin", device=CUDA_DEVICE, weights_only=True)
     train(net, tb, load_weights=False, pre_trained_params_path=param_to_load)
     tb.close()
 

@@ -3,10 +3,12 @@ import torch.nn
 import torchvision.transforms as T
 from torchvision.io import read_image
 from torch.utils.data import DataLoader, Dataset
+import albumentations
+import cv2
 
 
 class PetFinderDataset(Dataset):
-    def __init__(self, df, image_size=224, augment=False):
+    def __init__(self, df, image_size=384, augment=False):
         self._X = df["Id"].values
         self._y = None
         self.augment = augment
@@ -27,16 +29,30 @@ class PetFinderDataset(Dataset):
         l = df["Info"].values.reshape(-1, 1)
         m = df["Blur"].values.reshape(-1, 1)
         self.meta = torch.tensor(np.hstack((b, c, d, e, f, g, h, i, j, k, l, m)), dtype=torch.float32)
+        # if not self.augment:
+        #     self._transform = T.Compose([
+        #         # T.ToTensor(),
+        #         # T.ConvertImageDtype(torch.float32),
+        #         # lambda x: x / 255,
+        #         T.Resize([image_size, image_size])
+        #         # T.transforms.Normalize(mean=[0.485, 0.456, 0.406],
+        #         #                        std=[0.229, 0.224, 0.225])])
+        #         # T.transforms.Normalize(mean=[0.5, 0.5, 0.5],
+        #         #                        std=[0.5, 0.5, 0.5])
+        #     ])
+
         if not self.augment:
-            self._transform = T.Compose([
-                # T.ToTensor(),
-                # T.ConvertImageDtype(torch.float32),
-                # lambda x: x / 255,
-                T.Resize([image_size, image_size]),
-                # T.transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                #                        std=[0.229, 0.224, 0.225])])
-                T.transforms.Normalize(mean=[0.5, 0.5, 0.5],
-                                       std=[0.5, 0.5, 0.5])])
+            self._transform = albumentations.Compose([
+                albumentations.Resize(image_size, image_size, p=1),
+                albumentations.Normalize(
+                    mean=[0.485, 0.456, 0.406],
+                    std=[0.229, 0.224, 0.225],
+                    max_pixel_value=255.0,
+                    p=1.0,
+                ),
+            ],
+                p=1.0,
+            )
         else:
             raise NotImplementedError
 
@@ -45,13 +61,17 @@ class PetFinderDataset(Dataset):
 
     def __getitem__(self, idx):
         image_path = self._X[idx]
-        image = read_image(image_path).type(torch.float32)
-        image = image / 255
+        # image = read_image(image_path).type(torch.float32)
+        # image = image
+        #
+        # my_img = image.type(torch.float32) / 255
+        # my_img = (my_img - .5) / .5  # FIXME delete this
 
-        my_img = image.type(torch.float32) / 255
-        my_img = (my_img - .5) / .5  # FIXME delete this
+        image = cv2.imread(self._X[idx])
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-        image = self._transform(image)
+        image = self._transform(image=image)["image"]
+        image = np.transpose(image, (2, 0, 1)).astype(np.float32)  # permutation of dims
 
         meta = self.meta[idx]
         if self._y is not None:
