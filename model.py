@@ -14,7 +14,7 @@ class PetFinderModel(nn.Module):
 
         # self.vgg16 = models.vgg16(pretrained=True)
         self.bn1 = nn.BatchNorm1d(num_features=1000)
-        self.drop_out = nn.Dropout(p=0.1)
+        self.drop_out = nn.Dropout(p=0.3)
         # self.fc1 = nn.Linear(in_features=1000, out_features=64)
         # self.rl1 = nn.ReLU()
         self.fc2 = nn.Linear(in_features=1000+12, out_features=64)
@@ -28,11 +28,8 @@ class PetFinderModel(nn.Module):
 
     def forward(self, x, meta):
         e = self.eff_net(x)  # [1, 1000] for b1
-        # e = self.vgg16(x)
         e_normed = self.bn1(e)
         e_dropped = self.drop_out(e_normed)
-        # f1 = self.fc1(e_normed)
-        # f1_r = self.rl1(f1)
 
         fr_r_meta = torch.cat((e_dropped, meta), dim=1)
 
@@ -41,10 +38,6 @@ class PetFinderModel(nn.Module):
         f3 = self.fc3(f2_r)
         out = torch.sigmoid(f3) * 100
 
-        # x = self.dropout(e)
-        # x = torch.cat([x, meta], dim=1)
-        # x = self.dense1(x)
-        # out = self.dense2(x)
         return out
 
 

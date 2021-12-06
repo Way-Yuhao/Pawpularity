@@ -19,16 +19,17 @@ from data_loader import PetFinderDataset
 from model import PetFinderModel, SwinModel
 import torch.multiprocessing
 
+
 """Global Parameters"""
-CUDA_DEVICE = "cuda:6"
+CUDA_DEVICE = "cuda:7"
 dataset_path = "/mnt/data1/yl241/datasets/Pawpularity/"
 network_weight_path = "./weight/"
 model_name = None
 version = None
 # num_workers_train = 4  # FIXME
 # batch_size = 4
-num_workers_train = 16  # FIXME
-batch_size = 16
+num_workers_train = 24  # FIXME
+batch_size = 24
 n_splits = 5  # FIXME
 
 
@@ -41,6 +42,10 @@ def print_params():
     print("######## Basics ##################")
     print("version: {}".format(version))
     print("Training on {}".format(CUDA_DEVICE))
+
+
+def print_params_2(num_train_batches, num_dev_batches):
+    print("# of training minibatches = {} | dev = {}".format(num_train_batches, num_dev_batches))
 
 
 def load_data(df):
@@ -91,6 +96,7 @@ def train_dev(net, tb, load_weights=False, pre_trained_params_path=None):
     # scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[500, 1000, 1500], gamma=.8)
     scheduler = optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=10, gamma=.96)
 
+    print_params_2(train_num_mini_batches, dev_num_mini_batches)
     running_train_loss, running_dev_loss = 0.0, 0.0  # per epoch
     train_output, dev_output = None, None
     train_input, dev_input = None, None
@@ -109,6 +115,7 @@ def train_dev(net, tb, load_weights=False, pre_trained_params_path=None):
             optimizer.step()
             running_train_loss += train_loss.item()
         with torch.no_grad():
+            net.eval()
             for _ in range(dev_num_mini_batches):
                 dev_input, meta, label = dev_iter.next()
                 dev_input, meta, label = dev_input.to(CUDA_DEVICE), meta.to(CUDA_DEVICE), label.to(CUDA_DEVICE)
@@ -190,7 +197,7 @@ def main():
     # sys.path.append('../input/timm-pytorch-image-models/pytorch-image-models-master')
     # sys.path.append('../input/tez-lib')
     model_name = "CNN"
-    version = "-v0.5.6"
+    version = "-v0.5.9"
     # param_to_load = "./weight/CNN{}_epoch_{}.pth".format(version, "100_FINAL")
     param_to_load = None
     tb = SummaryWriter('./runs/' + model_name + version)
