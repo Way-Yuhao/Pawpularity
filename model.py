@@ -10,7 +10,7 @@ import torchvision.models as models
 class PetFinderModel(nn.Module):
     def __init__(self):
         super(PetFinderModel, self).__init__()
-        self.eff_net = EfficientNet.from_pretrained('efficientnet-b5')  # [m, 1000] for b1
+        self.eff_net = EfficientNet.from_pretrained('efficientnet-b1')  # [m, 1000] for b1
 
         # self.vgg16 = models.vgg16(pretrained=True)
         self.bn1 = nn.BatchNorm1d(num_features=1000)
@@ -38,7 +38,8 @@ class PetFinderModel(nn.Module):
 
         f2 = self.fc2(fr_r_meta)  # FIXME
         f2_r = self.rl2(f2)
-        out = self.fc3(f2_r)
+        f3 = self.fc3(f2_r)
+        out = torch.sigmoid(f3) * 100
 
         # x = self.dropout(e)
         # x = torch.cat([x, meta], dim=1)

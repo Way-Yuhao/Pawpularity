@@ -27,13 +27,13 @@ model_name = None
 version = None
 # num_workers_train = 4  # FIXME
 # batch_size = 4
-num_workers_train = 8  # FIXME
-batch_size = 8
-n_splits = 5   # FIXME
+num_workers_train = 16  # FIXME
+batch_size = 16
+n_splits = 5  # FIXME
 
 
 """Hyper Parameters"""
-init_lr = 1e-4
+init_lr = 1e-5
 epoch = 500
 
 
@@ -94,6 +94,7 @@ def train_dev(net, tb, load_weights=False, pre_trained_params_path=None):
     running_train_loss, running_dev_loss = 0.0, 0.0  # per epoch
     train_output, dev_output = None, None
     train_input, dev_input = None, None
+    label = None
     for ep in range(epoch):
         print("Epoch", ep)
         train_iter, dev_iter = iter(train_loader), iter(dev_loader)
@@ -102,7 +103,7 @@ def train_dev(net, tb, load_weights=False, pre_trained_params_path=None):
             net.train()
             train_input, meta, label = train_iter.next()
             train_input, meta, label = train_input.to(CUDA_DEVICE), meta.to(CUDA_DEVICE), label.to(CUDA_DEVICE)
-            train_output, _, _ = net(train_input, meta)  # [m, c, h, w]
+            train_output = net(train_input, meta)  # [m, c, h, w]
             train_loss = compute_loss(train_output, label)
             train_loss.backward()
             optimizer.step()
@@ -111,7 +112,7 @@ def train_dev(net, tb, load_weights=False, pre_trained_params_path=None):
             for _ in range(dev_num_mini_batches):
                 dev_input, meta, label = dev_iter.next()
                 dev_input, meta, label = dev_input.to(CUDA_DEVICE), meta.to(CUDA_DEVICE), label.to(CUDA_DEVICE)
-                dev_output, _, _ = net(dev_input, meta)
+                dev_output = net(dev_input, meta)
                 dev_loss = compute_loss(dev_output, label)
                 running_dev_loss += dev_loss.item()
         scheduler.step()
@@ -119,18 +120,21 @@ def train_dev(net, tb, load_weights=False, pre_trained_params_path=None):
         cur_train_loss = running_train_loss / train_num_mini_batches
         cur_dev_loss = running_dev_loss / dev_num_mini_batches
         print("train loss = {:.4} | val loss = {:.4}".format(cur_train_loss, cur_dev_loss))
+        tb.add_scalar('loss/lr', scheduler._last_lr[0], ep)
         tb.add_scalar('loss/train', cur_train_loss, ep)
         tb.add_scalar('loss/dev', cur_dev_loss, ep)
+        tb.add_histogram('distribution of dev output', dev_output, ep)
 
-        if ep % 10 == 9:
+        if ep % 20 == 19:
             save_network_weights(net, ep="{}".format(ep))  # FIXME
             input_img_grid = torchvision.utils.make_grid(train_input)
-            tb.add_image("{}/inputs".format("train"), input_img_grid, global_step=ep)
+            # tb.add_image("{}/inputs".format("train"), input_img_grid, global_step=ep)
             pass
 
         running_train_loss, running_dev_loss = 0.0, 0.0
 
     print("finished training")
+    tb.add_histogram('distribution of dev labels', label, 0)
     save_network_weights(net, ep="{}_FINAL".format(epoch))
 
 
@@ -186,7 +190,7 @@ def main():
     # sys.path.append('../input/timm-pytorch-image-models/pytorch-image-models-master')
     # sys.path.append('../input/tez-lib')
     model_name = "CNN"
-    version = "-v0.4.20-tiny"
+    version = "-v0.5.6"
     # param_to_load = "./weight/CNN{}_epoch_{}.pth".format(version, "100_FINAL")
     param_to_load = None
     tb = SummaryWriter('./runs/' + model_name + version)
