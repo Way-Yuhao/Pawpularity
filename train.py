@@ -25,8 +25,10 @@ dataset_path = "/mnt/data1/yl241/datasets/Pawpularity/"
 network_weight_path = "./weight/"
 model_name = None
 version = None
-num_workers_train = 4  # FIXME
-batch_size = 4
+# num_workers_train = 4  # FIXME
+# batch_size = 4
+num_workers_train = 8  # FIXME
+batch_size = 8
 n_splits = 5   # FIXME
 
 
@@ -65,7 +67,7 @@ def compute_loss(output, target):
     return mse_loss
 
 
-def train(net, tb, load_weights=False, pre_trained_params_path=None):
+def train_dev(net, tb, load_weights=False, pre_trained_params_path=None):
     print_params()
     net.to(CUDA_DEVICE)
     net.train()
@@ -87,7 +89,7 @@ def train(net, tb, load_weights=False, pre_trained_params_path=None):
 
     optimizer = optim.Adam(net.parameters(), lr=init_lr)
     # scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[500, 1000, 1500], gamma=.8)
-    scheduler = optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=1000, gamma=.96)
+    scheduler = optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=10, gamma=.96)
 
     running_train_loss, running_dev_loss = 0.0, 0.0  # per epoch
     train_output, dev_output = None, None
@@ -121,9 +123,9 @@ def train(net, tb, load_weights=False, pre_trained_params_path=None):
         tb.add_scalar('loss/dev', cur_dev_loss, ep)
 
         if ep % 10 == 9:
-            # save_network_weights(net, ep="{}".format(ep))  # FIXME
-            # input_img_grid = torchvision.utils.make_grid(train_input)
-            # tb.add_image("{}/inputs".format("train"), input_img_grid, global_step=ep)
+            save_network_weights(net, ep="{}".format(ep))  # FIXME
+            input_img_grid = torchvision.utils.make_grid(train_input)
+            tb.add_image("{}/inputs".format("train"), input_img_grid, global_step=ep)
             pass
 
         running_train_loss, running_dev_loss = 0.0, 0.0
@@ -132,33 +134,66 @@ def train(net, tb, load_weights=False, pre_trained_params_path=None):
     save_network_weights(net, ep="{}_FINAL".format(epoch))
 
 
-def train_k_fold_valid(net, df):
-    # skf = StratifiedKFold(n_splits=n_splits, shuffle=True)
-    # optimizer = optim.Adam(net.parameters(), lr=init_lr)
-    # scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[500, 1000, 1500], gamma=.8)
-    # for fold, (train_idx, val_idx) in enumerate(skf.split(df["Id"], df["Pawpularity"])):
-    #     train_df = df.loc[train_idx].reset_index(drop=True)
-    #     val_df = df.loc[val_idx].reset_index(drop=True)
-    #     train_loader = load_data(train_df)
-    #     val_loader = load_data(val_df)
-    #
-    #     num_mini_batches = len(train_loader)
-    raise NotImplementedError
+def train_simple(net, tb, load_weights=False, pre_trained_params_path=None):
+    print_params()
+    net.to(CUDA_DEVICE)
+    net.train()
+
+    if load_weights:
+        load_network_weights(net, pre_trained_params_path)
+    df = pd.read_csv(p.join(dataset_path, "train_20.csv"))
+    df["Id"] = df["Id"].apply(lambda x: os.path.join(dataset_path, "train", x + ".jpg"))
+    train_loader = load_data(df)
+    train_num_mini_batches = len(train_loader)
+
+    optimizer = optim.Adam(net.parameters(), lr=init_lr)
+    scheduler = optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=10, gamma=.96)
+    running_train_loss = 0.0  # per epoch
+
+    for ep in range(epoch):
+        print("Epoch", ep)
+        train_iter = iter(train_loader)
+        # TRAIN
+        for _ in tqdm(range(train_num_mini_batches)):
+            net.train()
+            train_input, meta, label = train_iter.next()
+            train_input, meta, label = train_input.to(CUDA_DEVICE), meta.to(CUDA_DEVICE), label.to(CUDA_DEVICE)
+            train_output = net(train_input, meta)  # [m, c, h, w]
+            train_loss = compute_loss(train_output, label)
+            train_loss.backward()
+            optimizer.step()
+            running_train_loss += train_loss.item()
+        scheduler.step()
+        # record loss values after each epoch
+        cur_train_loss = running_train_loss / train_num_mini_batches
+        print("train loss = {:.4} ".format(cur_train_loss))
+        tb.add_scalar('loss/train', cur_train_loss, ep)
+        tb.add_scalar('loss/lr', scheduler._last_lr[0], ep)
+        if ep % 10 == 9:
+            # save_network_weights(net, ep="{}".format(ep))  # FIXME
+            input_img_grid = torchvision.utils.make_grid(train_input)
+            tb.add_image("{}/inputs".format("train"), input_img_grid, global_step=ep)
+            tb.add_histogram('distribution out output', train_output, ep)
+            pass
+        running_train_loss, running_dev_loss = 0.0, 0.0
+    print("finished training")
+    save_network_weights(net, ep="{}_FINAL".format(epoch))
 
 
 def main():
     global model_name, version
-    sys.path.append('../input/timm-pytorch-image-models/pytorch-image-models-master')
-    sys.path.append('../input/tez-lib')
-    model_name = "Swin"
-    version = "-v1.0.4"
-    param_to_load = "./weight/CNN{}_epoch_{}.pth".format(version, "100_FINAL")
+    # sys.path.append('../input/timm-pytorch-image-models/pytorch-image-models-master')
+    # sys.path.append('../input/tez-lib')
+    model_name = "CNN"
+    version = "-v0.4.6-tiny"
+    # param_to_load = "./weight/CNN{}_epoch_{}.pth".format(version, "100_FINAL")
+    param_to_load = None
     tb = SummaryWriter('./runs/' + model_name + version)
 
-    # net = PetFinderModel()  # TODO
-    net = SwinModel(model_name="swin_large_patch4_window12_384")
+    net = PetFinderModel()  # TODO
+    # net = SwinModel(model_name="swin_large_patch4_window12_384")
     # net.load(f"../input/paw-models/model_f0.bin", device=CUDA_DEVICE, weights_only=True)
-    train(net, tb, load_weights=False, pre_trained_params_path=param_to_load)
+    train_simple(net, tb, load_weights=False, pre_trained_params_path=param_to_load)
     tb.close()
 
 
