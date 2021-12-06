@@ -145,6 +145,28 @@ def train_dev(net, tb, load_weights=False, pre_trained_params_path=None):
     save_network_weights(net, ep="{}_FINAL".format(epoch))
 
 
+def predict(net, tb, load_weights=True, pre_trained_params_path=None):
+    if load_weights:
+        load_network_weights(net, pre_trained_params_path)
+    else:
+        raise Exception("ERROR: need to load network weight")
+    df = pd.read_csv(p.join(dataset_path, "test.csv"))
+    df["Id"] = df["Id"].apply(lambda x: os.path.join(dataset_path, "train", x + ".jpg"))
+    test_loader = torch.utils.data.DataLoader(PetFinderDataset(df), batch_size=batch_size,
+                                              num_workers=8, drop_last=False)
+    test_num_mini_batches = len(test_loader)
+    predictions = np.array([])
+    net.eval()
+    for _ in tqdm(range(test_num_mini_batches)):
+        test_input, meta, label = test_loader.next()
+        test_output = net(test_input, meta)
+        predictions = np.append(predictions, test_output)
+
+    df["Pawpularity"] = predictions
+    df = df[["Id", "Pawpularity"]]
+    df.to_csv("./submission.csv", index=False)
+
+
 def train_simple(net, tb, load_weights=False, pre_trained_params_path=None):
     print_params()
     net.to(CUDA_DEVICE)
