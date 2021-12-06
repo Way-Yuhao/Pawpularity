@@ -34,7 +34,7 @@ n_splits = 5   # FIXME
 
 """Hyper Parameters"""
 init_lr = 1e-4
-epoch = 200
+epoch = 500
 
 
 def print_params():
@@ -186,7 +186,7 @@ def main():
     # sys.path.append('../input/timm-pytorch-image-models/pytorch-image-models-master')
     # sys.path.append('../input/tez-lib')
     model_name = "CNN"
-    version = "-v0.4.8-tiny"
+    version = "-v0.4.20-tiny"
     # param_to_load = "./weight/CNN{}_epoch_{}.pth".format(version, "100_FINAL")
     param_to_load = None
     tb = SummaryWriter('./runs/' + model_name + version)
@@ -194,7 +194,7 @@ def main():
     net = PetFinderModel()  # TODO
     # net = SwinModel(model_name="swin_large_patch4_window12_384")
     # net.load(f"../input/paw-models/model_f0.bin", device=CUDA_DEVICE, weights_only=True)
-    train_simple(net, tb, load_weights=False, pre_trained_params_path=param_to_load)
+    train_dev(net, tb, load_weights=False, pre_trained_params_path=param_to_load)
     tb.close()
 
 

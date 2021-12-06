@@ -14,26 +14,36 @@ class PetFinderModel(nn.Module):
 
         # self.vgg16 = models.vgg16(pretrained=True)
         self.bn1 = nn.BatchNorm1d(num_features=1000)
-        self.fc1 = nn.Linear(in_features=1000, out_features=64)
-        self.rl1 = nn.ReLU()
-        self.fc2 = nn.Linear(in_features=64+12, out_features=64)
+        self.drop_out = nn.Dropout(p=0.1)
+        # self.fc1 = nn.Linear(in_features=1000, out_features=64)
+        # self.rl1 = nn.ReLU()
+        self.fc2 = nn.Linear(in_features=1000+12, out_features=64)
         self.rl2 = nn.ReLU()
-        self.drop_out = nn.Dropout(p=0.3)
+
         self.fc3 = nn.Linear(in_features=64, out_features=1)
+
+        # self.dropout = torch.nn.Dropout(0.1)
+        # self.dense1 = torch.nn.Linear(1012, 64)
+        # self.dense2 = torch.nn.Linear(64, 1)
 
     def forward(self, x, meta):
         e = self.eff_net(x)  # [1, 1000] for b1
         # e = self.vgg16(x)
         e_normed = self.bn1(e)
-        f1 = self.fc1(e_normed)
-        f1_r = self.rl1(f1)
+        e_dropped = self.drop_out(e_normed)
+        # f1 = self.fc1(e_normed)
+        # f1_r = self.rl1(f1)
 
-        fr_r_meta = torch.cat((f1_r, meta), dim=1)
+        fr_r_meta = torch.cat((e_dropped, meta), dim=1)
 
         f2 = self.fc2(fr_r_meta)  # FIXME
         f2_r = self.rl2(f2)
-        f2_o = self.drop_out(f2_r)
-        out = self.fc3(f2_o)
+        out = self.fc3(f2_r)
+
+        # x = self.dropout(e)
+        # x = torch.cat([x, meta], dim=1)
+        # x = self.dense1(x)
+        # out = self.dense2(x)
         return out
 
 
