@@ -173,10 +173,11 @@ def train_simple(net, tb, load_weights=False, pre_trained_params_path=None):
             # save_network_weights(net, ep="{}".format(ep))  # FIXME
             input_img_grid = torchvision.utils.make_grid(train_input)
             tb.add_image("{}/inputs".format("train"), input_img_grid, global_step=ep)
-            tb.add_histogram('distribution out output', train_output, ep)
+            tb.add_histogram('distribution of output', train_output, ep)
             pass
         running_train_loss, running_dev_loss = 0.0, 0.0
     print("finished training")
+    tb.add_histogram('distribution of input', train_input, 0)
     save_network_weights(net, ep="{}_FINAL".format(epoch))
 
 
@@ -185,7 +186,7 @@ def main():
     # sys.path.append('../input/timm-pytorch-image-models/pytorch-image-models-master')
     # sys.path.append('../input/tez-lib')
     model_name = "CNN"
-    version = "-v0.4.6-tiny"
+    version = "-v0.4.7-tiny"
     # param_to_load = "./weight/CNN{}_epoch_{}.pth".format(version, "100_FINAL")
     param_to_load = None
     tb = SummaryWriter('./runs/' + model_name + version)
