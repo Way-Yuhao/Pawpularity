@@ -26,8 +26,8 @@ dataset_path = "/mnt/data1/yl241/datasets/Pawpularity/"
 network_weight_path = "./weight/"
 model_name = None
 version = None
-# num_workers_train = 4  # FIXME
-# batch_size = 4
+# num_workers_train = 6  # FIXME
+# batch_size = 6
 num_workers_train = 24  # FIXME
 batch_size = 24
 n_splits = 5  # FIXME
@@ -49,8 +49,8 @@ def print_params_2(num_train_batches, num_dev_batches):
     print("# of training minibatches = {} | dev = {}".format(num_train_batches, num_dev_batches))
 
 
-def load_data(df):
-    data_loader = torch.utils.data.DataLoader(PetFinderDataset(df, augment=True), batch_size=batch_size,
+def load_data(df, augment=False):
+    data_loader = torch.utils.data.DataLoader(PetFinderDataset(df, augment=augment), batch_size=batch_size,
                                               num_workers=num_workers_train, drop_last=True)
     return data_loader
 
@@ -88,8 +88,8 @@ def train_dev(net, tb, load_weights=False, pre_trained_params_path=None):
     fold, (train_idx, val_idx) = list(enum)[0]
     train_df = df.loc[train_idx].reset_index(drop=True)
     val_df = df.loc[val_idx].reset_index(drop=True)
-    train_loader = load_data(train_df)
-    dev_loader = load_data(val_df)
+    train_loader = load_data(train_df, augment=True)
+    dev_loader = load_data(val_df, augment=False)
     train_num_mini_batches = len(train_loader)
     dev_num_mini_batches = len(dev_loader)
 
@@ -120,7 +120,6 @@ def train_dev(net, tb, load_weights=False, pre_trained_params_path=None):
             train_loss.backward()
             optimizer.step()
             running_train_loss += train_loss.item()
-            pass
         with torch.no_grad():
             # net.eval()
             for _ in range(dev_num_mini_batches):
@@ -195,14 +194,15 @@ def train_simple(net, tb, load_weights=False, pre_trained_params_path=None):
         train_iter = iter(train_loader)
         # TRAIN
         for _ in tqdm(range(train_num_mini_batches)):
-            net.train()
-            train_input, meta, label = train_iter.next()
-            train_input, meta, label = train_input.to(CUDA_DEVICE), meta.to(CUDA_DEVICE), label.to(CUDA_DEVICE)
-            train_output = net(train_input, meta)  # [m, c, h, w]
-            train_loss = compute_loss(train_output, label)
-            train_loss.backward()
-            optimizer.step()
-            running_train_loss += train_loss.item()
+            # net.train()
+            # train_input, meta, label = train_iter.next()
+            # train_input, meta, label = train_input.to(CUDA_DEVICE), meta.to(CUDA_DEVICE), label.to(CUDA_DEVICE)
+            # train_output = net(train_input, meta)  # [m, c, h, w]
+            # train_loss = compute_loss(train_output, label)
+            # train_loss.backward()
+            # optimizer.step()
+            # running_train_loss += train_loss.item()
+            pass
         scheduler.step()
         # record loss values after each epoch
         cur_train_loss = running_train_loss / train_num_mini_batches
@@ -211,8 +211,8 @@ def train_simple(net, tb, load_weights=False, pre_trained_params_path=None):
         tb.add_scalar('loss/lr', scheduler._last_lr[0], ep)
         if ep % 10 == 9:
             # save_network_weights(net, ep="{}".format(ep))  # FIXME
-            input_img_grid = torchvision.utils.make_grid(train_input)
-            tb.add_image("{}/inputs".format("train"), input_img_grid, global_step=ep)
+            # input_img_grid = torchvision.utils.make_grid(train_input)
+            # tb.add_image("{}/inputs".format("train"), input_img_grid, global_step=ep)
             tb.add_histogram('distribution of output', train_output, ep)
             pass
         running_train_loss, running_dev_loss = 0.0, 0.0
@@ -227,7 +227,7 @@ def main():
     # sys.path.append('../input/tez-lib')
     model_name = "CNN"
     # version = "-v0.7.2"
-    version = "-v0.9.0-i_only"
+    version = "-v0.9.4"
     # param_to_load = "./weight/CNN{}_epoch_{}.pth".format(version, "100_FINAL")
     param_to_load = None
     tb = SummaryWriter('./runs/' + model_name + version)

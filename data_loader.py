@@ -62,8 +62,8 @@ class PetFinderDataset(Dataset):
         if self.augment is False:
             pass
         else:
-            input_= self.random_horizontal_flip(input_)
-        return input_, spad, target
+            input_ = self.random_horizontal_flip(input_)
+        return input_
 
     def random_horizontal_flip(self, input_, p=.5):
         """
