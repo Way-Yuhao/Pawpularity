@@ -21,21 +21,21 @@ import torch.multiprocessing
 
 
 """Global Parameters"""
-CUDA_DEVICE = "cuda:6"
+CUDA_DEVICE = "cuda:7"
 dataset_path = "/mnt/data1/yl241/datasets/Pawpularity/"
 network_weight_path = "./weight/"
 model_name = None
 version = None
 # num_workers_train = 4  # FIXME
 # batch_size = 4
-num_workers_train = 12  # FIXME
-batch_size = 12
+num_workers_train = 24  # FIXME
+batch_size = 24
 n_splits = 5  # FIXME
 
 
 """Hyper Parameters"""
-# init_lr = 1e-5  # ADAM
-init_lr = 1e-6  # SDG
+init_lr = 1e-5  # ADAM
+# init_lr = 1e-6  # SDG
 epoch = 500
 
 
@@ -94,8 +94,8 @@ def train_dev(net, tb, load_weights=False, pre_trained_params_path=None):
     dev_num_mini_batches = len(dev_loader)
 
     # optimizer = optim.Adam(net.parameters(), lr=init_lr)
-    # optimizer = optim.AdamW(net.parameters(), lr=init_lr, weight_decay=1.)
-    optimizer = optim.SGD(net.parameters(), lr=init_lr, momentum=.9)
+    optimizer = optim.AdamW(net.parameters(), lr=init_lr, weight_decay=10.)
+    # optimizer = optim.SGD(net.parameters(), lr=init_lr, momentum=.9)
     # scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[500, 1000, 1500], gamma=.8)
     scheduler = optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=10, gamma=.96)
 
@@ -136,7 +136,7 @@ def train_dev(net, tb, load_weights=False, pre_trained_params_path=None):
         tb.add_scalar('loss/dev', cur_dev_loss, ep)
         tb.add_histogram('distribution of dev output', dev_output, ep)
 
-        if ep % 5 == 4:
+        if ep % 10 == 9:
             save_network_weights(net, ep="{}".format(ep))  # FIXME
             # input_img_grid = torchvision.utils.make_grid(train_input)
             # tb.add_image("{}/inputs".format("train"), input_img_grid, global_step=ep)
@@ -223,7 +223,8 @@ def main():
     # sys.path.append('../input/timm-pytorch-image-models/pytorch-image-models-master')
     # sys.path.append('../input/tez-lib')
     model_name = "CNN"
-    version = "-v0.7.2"
+    # version = "-v0.7.2"
+    version = "-v0.8.1-i_only"
     # param_to_load = "./weight/CNN{}_epoch_{}.pth".format(version, "100_FINAL")
     param_to_load = None
     tb = SummaryWriter('./runs/' + model_name + version)

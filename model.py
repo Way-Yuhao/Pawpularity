@@ -17,7 +17,7 @@ class PetFinderModel(nn.Module):
         self.drop_out = nn.Dropout(p=0.3)
         # self.fc1 = nn.Linear(in_features=1000, out_features=64)
         # self.rl1 = nn.ReLU()
-        self.fc2 = nn.Linear(in_features=1000+12, out_features=64)
+        self.fc2 = nn.Linear(in_features=1000, out_features=64)
         self.rl2 = nn.ReLU()
 
         self.fc3 = nn.Linear(in_features=64, out_features=1)
@@ -31,8 +31,8 @@ class PetFinderModel(nn.Module):
         # e_normed = self.bn1(e)
         # e_dropped = self.drop_out(e_normed)
 
-        fr_r_meta = torch.cat((e, meta), dim=1)
-        fr_r_meta_dropped = self.drop_out(fr_r_meta)
+        # fr_r_meta = torch.cat((e, meta), dim=1)
+        fr_r_meta_dropped = self.drop_out(e)
 
         f2 = self.fc2(fr_r_meta_dropped)  # FIXME
         f2_r = self.rl2(f2)
