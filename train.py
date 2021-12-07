@@ -228,7 +228,7 @@ def main():
     # sys.path.append('../input/tez-lib')
     model_name = "CNN"
     # version = "-v0.7.2"
-    version = "-v0.9.10"
+    version = "-v0.10.1"
     # param_to_load = "./weight/CNN{}_epoch_{}.pth".format(version, "100_FINAL")
     param_to_load = None
     tb = SummaryWriter('./runs/' + model_name + version)

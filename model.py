@@ -30,7 +30,8 @@ class PetFinderModel(nn.Module):
         fr_r_meta_dropped = self.drop_out(e)
 
         f2 = self.fc2(fr_r_meta_dropped)  # FIXME
-        f2_r = self.rl2(f2)
+        # f2_r = self.rl2(f2)
+        f2_r = torch.sigmoid(f2)
         # f2_rd = self.drop_out2(f2_r)
 
         f3 = self.fc3(f2_r)
