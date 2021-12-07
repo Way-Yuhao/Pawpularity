@@ -16,11 +16,10 @@ class PetFinderModel(nn.Module):
 
         self.fc2 = nn.Linear(in_features=1000, out_features=64)
         self.rl2 = nn.ReLU()
-        # self.drop_out2 = nn.Dropout(p=0.5)
         self.fc3 = nn.Linear(in_features=64, out_features=1)
 
-        for p in self.eff_net.parameters():
-            p.requires_grad = False
+        # for p in self.eff_net.parameters():
+        #     p.requires_grad = False
 
     def forward(self, x, meta):
         e = self.eff_net(x)  # [1, 1000] for b1
