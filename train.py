@@ -16,7 +16,7 @@ import pandas as pd
 from sklearn.model_selection import StratifiedKFold
 
 from data_loader import PetFinderDataset
-from model import PetFinderModel, SwinModel
+from model import PetFinderModel
 import torch.multiprocessing
 
 
@@ -92,7 +92,8 @@ def train_dev(net, tb, load_weights=False, pre_trained_params_path=None):
     train_num_mini_batches = len(train_loader)
     dev_num_mini_batches = len(dev_loader)
 
-    optimizer = optim.Adam(net.parameters(), lr=init_lr)
+    # optimizer = optim.Adam(net.parameters(), lr=init_lr)
+    optimizer = optim.AdamW(net.parameters(), lr=init_lr, weight_decay=1.)
     # scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[500, 1000, 1500], gamma=.8)
     scheduler = optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=10, gamma=.96)
 
@@ -114,8 +115,9 @@ def train_dev(net, tb, load_weights=False, pre_trained_params_path=None):
             train_loss.backward()
             optimizer.step()
             running_train_loss += train_loss.item()
+            pass
         with torch.no_grad():
-            net.eval()
+            # net.eval()
             for _ in range(dev_num_mini_batches):
                 dev_input, meta, label = dev_iter.next()
                 dev_input, meta, label = dev_input.to(CUDA_DEVICE), meta.to(CUDA_DEVICE), label.to(CUDA_DEVICE)
@@ -132,9 +134,9 @@ def train_dev(net, tb, load_weights=False, pre_trained_params_path=None):
         tb.add_scalar('loss/dev', cur_dev_loss, ep)
         tb.add_histogram('distribution of dev output', dev_output, ep)
 
-        if ep % 20 == 19:
+        if ep % 5 == 4:
             save_network_weights(net, ep="{}".format(ep))  # FIXME
-            input_img_grid = torchvision.utils.make_grid(train_input)
+            # input_img_grid = torchvision.utils.make_grid(train_input)
             # tb.add_image("{}/inputs".format("train"), input_img_grid, global_step=ep)
             pass
 
@@ -145,7 +147,7 @@ def train_dev(net, tb, load_weights=False, pre_trained_params_path=None):
     save_network_weights(net, ep="{}_FINAL".format(epoch))
 
 
-def predict(net, tb, load_weights=True, pre_trained_params_path=None):
+def predict(net, load_weights=True, pre_trained_params_path=None):
     if load_weights:
         load_network_weights(net, pre_trained_params_path)
     else:
@@ -219,7 +221,7 @@ def main():
     # sys.path.append('../input/timm-pytorch-image-models/pytorch-image-models-master')
     # sys.path.append('../input/tez-lib')
     model_name = "CNN"
-    version = "-v0.5.9"
+    version = "-v0.7.0"
     # param_to_load = "./weight/CNN{}_epoch_{}.pth".format(version, "100_FINAL")
     param_to_load = None
     tb = SummaryWriter('./runs/' + model_name + version)
