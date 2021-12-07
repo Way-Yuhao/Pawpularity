@@ -21,7 +21,7 @@ import torch.multiprocessing
 
 
 """Global Parameters"""
-CUDA_DEVICE = "cuda:7"
+CUDA_DEVICE = "cuda:6"
 dataset_path = "/mnt/data1/yl241/datasets/Pawpularity/"
 network_weight_path = "./weight/"
 model_name = None
@@ -94,7 +94,7 @@ def train_dev(net, tb, load_weights=False, pre_trained_params_path=None):
     dev_num_mini_batches = len(dev_loader)
 
     # optimizer = optim.Adam(net.parameters(), lr=init_lr)
-    optimizer = optim.AdamW(net.parameters(), lr=init_lr, weight_decay=10.)
+    optimizer = optim.AdamW(net.parameters(), lr=init_lr, weight_decay=.1)
     # optimizer = optim.SGD(net.parameters(), lr=init_lr, momentum=.9)
     # scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[500, 1000, 1500], gamma=.8)
     scheduler = optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=10, gamma=.96)
@@ -224,7 +224,7 @@ def main():
     # sys.path.append('../input/tez-lib')
     model_name = "CNN"
     # version = "-v0.7.2"
-    version = "-v0.8.1-i_only"
+    version = "-v0.8.4-i_only"
     # param_to_load = "./weight/CNN{}_epoch_{}.pth".format(version, "100_FINAL")
     param_to_load = None
     tb = SummaryWriter('./runs/' + model_name + version)

@@ -12,19 +12,15 @@ class PetFinderModel(nn.Module):
         super(PetFinderModel, self).__init__()
         self.eff_net = EfficientNet.from_pretrained('efficientnet-b1')  # [m, 1000] for b1
 
-        # self.vgg16 = models.vgg16(pretrained=True)
-        # self.bn1 = nn.BatchNorm1d(num_features=1000)
         self.drop_out = nn.Dropout(p=0.3)
-        # self.fc1 = nn.Linear(in_features=1000, out_features=64)
-        # self.rl1 = nn.ReLU()
+
         self.fc2 = nn.Linear(in_features=1000, out_features=64)
         self.rl2 = nn.ReLU()
-
+        # self.drop_out2 = nn.Dropout(p=0.5)
         self.fc3 = nn.Linear(in_features=64, out_features=1)
 
-        # self.dropout = torch.nn.Dropout(0.1)
-        # self.dense1 = torch.nn.Linear(1012, 64)
-        # self.dense2 = torch.nn.Linear(64, 1)
+        for p in self.eff_net.parameters():
+            p.requires_grad = False
 
     def forward(self, x, meta):
         e = self.eff_net(x)  # [1, 1000] for b1
@@ -36,6 +32,8 @@ class PetFinderModel(nn.Module):
 
         f2 = self.fc2(fr_r_meta_dropped)  # FIXME
         f2_r = self.rl2(f2)
+        # f2_rd = self.drop_out2(f2_r)
+
         f3 = self.fc3(f2_r)
         out = torch.sigmoid(f3) * 100
 
