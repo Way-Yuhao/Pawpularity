@@ -29,32 +29,12 @@ class PetFinderDataset(Dataset):
         l = df["Info"].values.reshape(-1, 1)
         m = df["Blur"].values.reshape(-1, 1)
         self.meta = torch.tensor(np.hstack((b, c, d, e, f, g, h, i, j, k, l, m)), dtype=torch.float32)
-        if not self.augment:
-            self._transform = T.Compose([
-                # T.ToTensor(),
-                # T.ConvertImageDtype(torch.float32),
-                lambda x: x / 255,
-                T.Resize([image_size, image_size]),
-                # T.transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                #                        std=[0.229, 0.224, 0.225])])
-                T.transforms.Normalize(mean=[0.5, 0.5, 0.5],
-                                       std=[0.5, 0.5, 0.5])
-            ])
-
-        # if not self.augment:
-        #     self._transform = albumentations.Compose([
-        #         albumentations.Resize(image_size, image_size, p=1),
-        #         albumentations.Normalize(
-        #             mean=[0.485, 0.456, 0.406],
-        #             std=[0.229, 0.224, 0.225],
-        #             max_pixel_value=255.0,
-        #             p=1.0,
-        #         ),
-        #     ],
-        #         p=1.0,
-        #     )
-        else:
-            raise NotImplementedError
+        self._transform = T.Compose([
+            lambda x: x / 255,
+            T.Resize([image_size, image_size]),
+            T.transforms.Normalize(mean=[0.5, 0.5, 0.5],
+                                   std=[0.5, 0.5, 0.5])
+        ])
 
     def __len__(self):
         return len(self._X)
@@ -63,17 +43,38 @@ class PetFinderDataset(Dataset):
         image_path = self._X[idx]
         image = read_image(image_path).type(torch.float32)
         image = self._transform(image)
-        #
-        # my_img = image.type(torch.float32) / 255
-        # my_img = (my_img - .5) / .5  # FIXME delete this
-
-        # image = cv2.imread(self._X[idx])
-        # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        # image = self._transform(image=image)["image"]
-        # image = np.transpose(image, (2, 0, 1)).astype(np.float32)  # permutation of dims
+        image = self.data_augmentation(image)
 
         meta = self.meta[idx]
         if self._y is not None:
             label = self._y[idx]
             return image, meta, label
         return image, meta
+
+    def data_augmentation(self, input_):
+        """
+        applies a sequence of data augmentations
+        :param input_: CMOS input
+        :param spad: SPAD input
+        :param target: ground truth
+        :return: augmented inputs and ground truth
+        """
+        if self.augment is False:
+            pass
+        else:
+            input_= self.random_horizontal_flip(input_)
+        return input_, spad, target
+
+    def random_horizontal_flip(self, input_, p=.5):
+        """
+        applies a random horizontal flip
+        :param input_: CMOS input
+        :param spad: SPAD input
+        :param target: ground truth
+        :param p: probability of applying the flip
+        :return: flipped or original images
+        """
+        x = np.random.rand()
+        if x < p:
+            input_ = torch.flip(input_, (2,))
+        return input_

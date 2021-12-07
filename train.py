@@ -50,7 +50,7 @@ def print_params_2(num_train_batches, num_dev_batches):
 
 
 def load_data(df):
-    data_loader = torch.utils.data.DataLoader(PetFinderDataset(df), batch_size=batch_size,
+    data_loader = torch.utils.data.DataLoader(PetFinderDataset(df, augment=True), batch_size=batch_size,
                                               num_workers=num_workers_train, drop_last=True)
     return data_loader
 
