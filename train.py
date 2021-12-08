@@ -21,16 +21,18 @@ import torch.multiprocessing
 
 
 """Global Parameters"""
-CUDA_DEVICE = "cuda:6"
+CUDA_DEVICE = "cuda:7"
 dataset_path = "/mnt/data1/yl241/datasets/Pawpularity/"
 network_weight_path = "./weight/"
 model_name = None
 version = None
-# num_workers_train = 6  # FIXME
-# batch_size = 6
-num_workers_train = 24  # FIXME
-batch_size = 24
-n_splits = 5  # FIXME
+# num_workers_train = 4  # 8 for b5, 4 for b7
+# batch_size = 4
+# num_workers_train = 24
+# batch_size = 24
+
+batch_size = 16
+n_splits = 5
 
 
 """Hyper Parameters"""
@@ -100,7 +102,7 @@ def train_dev(net, tb, load_weights=False, pre_trained_params_path=None):
         {"params": net.eff_net.parameters(), "lr": init_lr * 0.01},
         {"params": net.fc2.parameters(), "lr": init_lr},
         {"params": net.fc3.parameters(), "lr": init_lr},
-    ], lr=init_lr, weight_decay=.01)
+    ], lr=init_lr, weight_decay=.1)
     scheduler = optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=5, gamma=.96)
 
     print_params_2(train_num_mini_batches, dev_num_mini_batches)
@@ -143,7 +145,7 @@ def train_dev(net, tb, load_weights=False, pre_trained_params_path=None):
             save_network_weights(net, ep="{}".format(ep))
             # input_img_grid = torchvision.utils.make_grid(train_input)
             # tb.add_image("{}/inputs".format("train"), input_img_grid, global_step=ep)
-        if cur_dev_loss <= lowest_dev_score and cur_dev_loss <= 18.5:
+        if cur_dev_loss <= lowest_dev_score and cur_dev_loss <= 17.8:
             save_network_weights(net, ep="{}_lowest={}".format(ep, cur_dev_loss))
             lowest_dev_score = cur_dev_loss
         running_train_loss, running_dev_loss = 0.0, 0.0
@@ -154,26 +156,35 @@ def train_dev(net, tb, load_weights=False, pre_trained_params_path=None):
 
 
 def predict(net, load_weights=True, pre_trained_params_path=None):
+    net.to(CUDA_DEVICE)
     if load_weights:
         load_network_weights(net, pre_trained_params_path)
     else:
         raise Exception("ERROR: need to load network weight")
-    df = pd.read_csv(p.join(dataset_path, "test.csv"))
+    df = pd.read_csv(p.join(dataset_path, "train.csv"))
     df["Id"] = df["Id"].apply(lambda x: os.path.join(dataset_path, "train", x + ".jpg"))
     test_loader = torch.utils.data.DataLoader(PetFinderDataset(df), batch_size=batch_size,
-                                              num_workers=8, drop_last=False)
+                                              num_workers=16, drop_last=False)
+    test_iter = iter(test_loader)
     test_num_mini_batches = len(test_loader)
     predictions = np.array([])
-    net.eval()
-    for _ in tqdm(range(test_num_mini_batches)):
-        test_input, meta, label = test_loader.next()
-        test_output = net(test_input, meta)
-        predictions = np.append(predictions, test_output)
+    with torch.no_grad():
+        for _ in tqdm(range(test_num_mini_batches)):
+            test_input, meta, label = test_iter.next()
+            test_input, meta, label = test_input.to(CUDA_DEVICE), meta.to(CUDA_DEVICE), label.to(CUDA_DEVICE)
+            test_output = net(test_input, meta)
+            predictions = np.append(predictions, test_output.cpu().detach().numpy())
 
-    df["Pawpularity"] = predictions
-    df = df[["Id", "Pawpularity"]]
-    df.to_csv("./submission.csv", index=False)
+    df["predictions"] = predictions
+    df = df[["Id", "predictions"]]
+    df.to_csv("./predictions.csv", index=False)
 
+
+def predict_wild(net, load_weights=True, pre_trained_params_path=None):
+    if load_weights:
+        load_network_weights(net, pre_trained_params_path)
+    else:
+        raise Exception("ERROR: need to load network weight")
 
 # def train_simple(net, tb, load_weights=False, pre_trained_params_path=None):
 #     print_params()
@@ -228,15 +239,16 @@ def main():
     # sys.path.append('../input/timm-pytorch-image-models/pytorch-image-models-master')
     # sys.path.append('../input/tez-lib')
     model_name = "CNN"
-    version = "-v0.10.10"
+    version = "-v0.12.0"
     # param_to_load = "./weight/CNN{}_epoch_{}.pth".format(version, "100_FINAL")
-    param_to_load = None
+    # param_to_load = "./weight/CNN-v0.11.3_epoch_23_lowest=16.979701434602642.pth"
     tb = SummaryWriter('./runs/' + model_name + version)
 
-    net = PetFinderModel()  # TODO
+    net = PetFinderModel()
     # net = SwinModel(model_name="swin_large_patch4_window12_384")
     # net.load(f"../input/paw-models/model_f0.bin", device=CUDA_DEVICE, weights_only=True)
-    train_dev(net, tb, load_weights=False, pre_trained_params_path=param_to_load)
+    # train_dev(net, tb, load_weights=False, pre_trained_params_path=param_to_load)
+    predict(net, load_weights=True, pre_trained_params_path=param_to_load)
     tb.close()
 
 

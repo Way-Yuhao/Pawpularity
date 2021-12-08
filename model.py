@@ -10,7 +10,7 @@ import torch.nn as nn
 class PetFinderModel(nn.Module):
     def __init__(self):
         super(PetFinderModel, self).__init__()
-        self.eff_net = EfficientNet.from_pretrained('efficientnet-b1')  # [m, 1000] for b1
+        self.eff_net = EfficientNet.from_pretrained('efficientnet-b7')  # [m, 1000] for b1
         # self.bn1 = nn.BatchNorm1d(1000)
         self.drop_out = nn.Dropout(p=0.5)
 
