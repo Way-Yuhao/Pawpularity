@@ -35,9 +35,9 @@ class PetFinderModel(nn.Module):
         # f2_rd = self.drop_out2(f2_r)
 
         f3 = self.fc3(f2_r)
-        out = torch.sigmoid(f3) * 100
+        # out = torch.sigmoid(f3) * 100
 
-        return out
+        return f3
 
 
 # class SwinModel(tez.Model):

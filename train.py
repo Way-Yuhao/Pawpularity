@@ -21,7 +21,7 @@ import torch.multiprocessing
 
 
 """Global Parameters"""
-CUDA_DEVICE = "cuda:3"
+CUDA_DEVICE = "cuda:6"
 dataset_path = "/mnt/data1/yl241/datasets/Pawpularity/"
 network_weight_path = "./weight/"
 model_name = None
@@ -94,13 +94,13 @@ def train_dev(net, tb, load_weights=False, pre_trained_params_path=None):
     train_num_mini_batches = len(train_loader)
     dev_num_mini_batches = len(dev_loader)
 
-    optimizer = optim.Adam(net.parameters(), lr=init_lr)
+    # optimizer = optim.Adam(net.parameters(), lr=init_lr)
     # optimizer = optim.AdamW(net.parameters(), lr=init_lr, weight_decay=.1)
-    # optimizer = optim.AdamW([
-    #     {"params": net.eff_net.parameters(), "lr": init_lr * 0.01},
-    #     {"params": net.fc2.parameters(), "lr": init_lr},
-    #     {"params": net.fc3.parameters(), "lr": init_lr},
-    # ], lr=init_lr, weight_decay=.01)
+    optimizer = optim.AdamW([
+        {"params": net.eff_net.parameters(), "lr": init_lr * 0.01},
+        {"params": net.fc2.parameters(), "lr": init_lr},
+        {"params": net.fc3.parameters(), "lr": init_lr},
+    ], lr=init_lr, weight_decay=.01)
     scheduler = optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=5, gamma=.96)
 
     print_params_2(train_num_mini_batches, dev_num_mini_batches)
@@ -228,8 +228,7 @@ def main():
     # sys.path.append('../input/timm-pytorch-image-models/pytorch-image-models-master')
     # sys.path.append('../input/tez-lib')
     model_name = "CNN"
-    # version = "-v0.7.2"
-    version = "-v0.10.7"
+    version = "-v0.10.10"
     # param_to_load = "./weight/CNN{}_epoch_{}.pth".format(version, "100_FINAL")
     param_to_load = None
     tb = SummaryWriter('./runs/' + model_name + version)
