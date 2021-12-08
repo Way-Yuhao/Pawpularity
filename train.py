@@ -21,7 +21,7 @@ import torch.multiprocessing
 
 
 """Global Parameters"""
-CUDA_DEVICE = "cuda:7"
+CUDA_DEVICE = "cuda:6"
 dataset_path = "/mnt/data1/yl241/datasets/Pawpularity/"
 network_weight_path = "./weight/"
 model_name = None
@@ -70,7 +70,7 @@ def save_network_weights(net, ep=None):
 
 def compute_loss(output, target):
     mse_criterion = nn.MSELoss()
-    mse_loss = mse_criterion(output.squeeze(1), target)
+    mse_loss = torch.sqrt(mse_criterion(output.squeeze(1), target))
     return mse_loss
 
 
@@ -97,10 +97,10 @@ def train_dev(net, tb, load_weights=False, pre_trained_params_path=None):
     # optimizer = optim.Adam(net.parameters(), lr=init_lr)
     # optimizer = optim.AdamW(net.parameters(), lr=init_lr, weight_decay=.1)
     optimizer = optim.AdamW([
-        {"params": net.eff_net.parameters(), "lr": init_lr * 0.001},
+        {"params": net.eff_net.parameters(), "lr": init_lr * 0.01},
         {"params": net.fc2.parameters(), "lr": init_lr},
         {"params": net.fc3.parameters(), "lr": init_lr},
-    ], lr=init_lr, weight_decay=.1)
+    ], lr=init_lr, weight_decay=.01)
     scheduler = optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=10, gamma=.96)
 
     print_params_2(train_num_mini_batches, dev_num_mini_batches)
@@ -139,7 +139,7 @@ def train_dev(net, tb, load_weights=False, pre_trained_params_path=None):
         tb.add_scalar('loss/dev', cur_dev_loss, ep)
         tb.add_histogram('distribution of dev output', dev_output, ep)
 
-        if ep % 10 == 9:
+        if ep % 5 == 4:
             save_network_weights(net, ep="{}".format(ep))  # FIXME
             # input_img_grid = torchvision.utils.make_grid(train_input)
             # tb.add_image("{}/inputs".format("train"), input_img_grid, global_step=ep)
@@ -228,7 +228,7 @@ def main():
     # sys.path.append('../input/tez-lib')
     model_name = "CNN"
     # version = "-v0.7.2"
-    version = "-v0.10.1"
+    version = "-v0.10.2-re"
     # param_to_load = "./weight/CNN{}_epoch_{}.pth".format(version, "100_FINAL")
     param_to_load = None
     tb = SummaryWriter('./runs/' + model_name + version)
