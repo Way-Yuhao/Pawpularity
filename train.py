@@ -162,6 +162,7 @@ def predict(net, load_weights=True, pre_trained_params_path=None):
     else:
         raise Exception("ERROR: need to load network weight")
     df = pd.read_csv(p.join(dataset_path, "train.csv"))
+    id_temp = df["Id"].copy()
     df["Id"] = df["Id"].apply(lambda x: os.path.join(dataset_path, "train", x + ".jpg"))
     test_loader = torch.utils.data.DataLoader(PetFinderDataset(df), batch_size=batch_size,
                                               num_workers=16, drop_last=False)
@@ -170,14 +171,17 @@ def predict(net, load_weights=True, pre_trained_params_path=None):
     predictions = np.array([])
     with torch.no_grad():
         for _ in tqdm(range(test_num_mini_batches)):
-            test_input, meta, label = test_iter.next()
-            test_input, meta, label = test_input.to(CUDA_DEVICE), meta.to(CUDA_DEVICE), label.to(CUDA_DEVICE)
-            test_output = net(test_input, meta)
-            predictions = np.append(predictions, test_output.cpu().detach().numpy())
+            # test_input, meta, label = test_iter.next()
+            # test_input, meta, label = test_input.to(CUDA_DEVICE), meta.to(CUDA_DEVICE), label.to(CUDA_DEVICE)
+            # test_output = net(test_input, meta)
+            # predictions = np.append(predictions, test_output.cpu().detach().numpy())
+            pass
 
+    predictions = np.ones(9912)
     df["predictions"] = predictions
+    df["Id"] = id_temp
     df = df[["Id", "predictions"]]
-    df.to_csv("./predictions.csv", index=False)
+    df.to_csv("./predictions_yolo.csv", index=False)
 
 
 def predict_wild(net, load_weights=True, pre_trained_params_path=None):
@@ -241,7 +245,7 @@ def main():
     model_name = "CNN"
     version = "-v0.12.0"
     # param_to_load = "./weight/CNN{}_epoch_{}.pth".format(version, "100_FINAL")
-    # param_to_load = "./weight/CNN-v0.11.3_epoch_23_lowest=16.979701434602642.pth"
+    param_to_load = "./weight/CNN-v0.11.3_epoch_23_lowest=16.979701434602642.pth"
     tb = SummaryWriter('./runs/' + model_name + version)
 
     net = PetFinderModel()
